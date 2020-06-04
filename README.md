@@ -1,2 +1,24 @@
-# StackAnime
-代码控制实现栈的入栈，进栈，合并，交换等动画，写Blog的好帮手
+# stack-anime
+
+## Project setup
+```
+npm install
+```
+
+### Compiles and hot-reloads for development
+```
+npm run serve
+```
+
+### Compiles and minifies for production
+```
+npm run build
+```
+
+### Lints and fixes files
+```
+npm run lint
+```
+
+### Customize configuration
+See [Configuration Reference](https://cli.vuejs.org/config/).
