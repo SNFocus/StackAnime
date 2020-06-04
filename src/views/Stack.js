@@ -1,4 +1,5 @@
 export class AnimeLoader {
+  static duration = 500
   constructor () {
     this.animations = []
     this.animeTask = []
@@ -52,7 +53,7 @@ export class AnimeLoader {
         } else {
           setAttr(frames[i])
         }
-      }, i * (gap || 500))
+      }, i * (gap || AnimeLoader.duration))
     }
   }
 

@@ -4,7 +4,7 @@
       <a-input-number
           v-model="config.stackGap"
           :min="30"
-          @change="onChange" />
+          @change="val => onChange(val, 'stackGap')" />
     </config-item>
 
     <config-item label="元素间隔">
@@ -12,30 +12,30 @@
           v-model="config.childGap"
           :min="1"
           :max="10"
-          @change="onChange" />
+          @change="val => onChange(val, 'childGap')" />
     </config-item>
 
     <config-item label="元素宽度">
       <a-input-number
           v-model="config.childWidth"
           :min="30"
-          @change="onChange" />
+          @change="val => onChange(val, 'childWidth')" />
     </config-item>
 
     <config-item label="元素高度">
       <a-input-number
           v-model="config.childHeight"
           :min="30"
-          @change="onChange" />
+          @change="val => onChange(val, 'childHeight')" />
     </config-item>
 
     <config-item label="动画时间">
       <a-input-number
           v-model="config.duration"
-          @change="onChange" />
+          @change="val => onChange(val, 'duration')" />
     </config-item>
 
-     <config-item label="动画时间">
+     <config-item label="栈方向">
        <a-select v-model="orientation" style="width: 120px" @change="onOrientationChange">
         <a-select-option value="landscape">
           横向
@@ -49,24 +49,29 @@
     <config-item label="距离左边" v-if="config.isLandscape">
       <a-input-number
           v-model="config.toLeft"
-          @change="onChange" />
+          @change="val => onChange(val, 'toLeft')" />
     </config-item>
 
     <config-item label="距离底部" v-else>
       <a-input-number
           v-model="config.toBottom"
-          @change="onChange" />
+          @change="val => onChange(val, 'toBottom')" />
     </config-item>
-
-    <config-item label="样式设置">
-      <div
-      v-for="item in styleConfig"
-      :key="item.label"
-      :style="{ background: item.value }">
-      </div>
-    </config-item>
-
-    <color-picker v-model="color" v-show="showColorPicker" />
+    <a-row>
+      <a-col
+        :span="12"
+        class="color-setting"
+        v-for="item in styleConfig"
+        :key="item.label"
+        @click="setColor(item)">
+          <span class="preview" :style="{ background: item.value }"></span>
+          <span>{{ item.label }}</span>
+        </a-col>
+    </a-row>
+    <color-picker
+     v-if="editingColor"
+     v-model="editingColor.value"
+     @input="onColorChange"/>
   </div>
 </template>
 
@@ -80,8 +85,8 @@ export default {
   data () {
     return {
       color: '#FF9800',
-      orientation: '',
-      showColorPicker: false,
+      orientation: 'landscape',
+      editingColor: null,
       config: {
         duration: 500,
         childGap: 6, // 元素之间的间隔
@@ -122,13 +127,21 @@ export default {
     }
   },
   methods: {
-    onChange () {
-      console.log('config change')
+    onChange (val, key) {
+      this.emitChange('config', key, val)
     },
     onOrientationChange (val) {
-      console.log(val)
       this.config.isLandscape = val === 'landscape'
-      this.onChange(val)
+      this.emitChange('config', 'isLandScape', this.config.isLandscape)
+    },
+    setColor (color) {
+      this.editingColor = color
+    },
+    onColorChange (val) {
+      this.emitChange('styleConfig', this.editingColor.key, val.hex)
+    },
+    emitChange (type, key, val) {
+      this.$emit('change', type, key, val)
     }
   }
 }
@@ -142,5 +155,16 @@ export default {
   padding: 18px 20px;
   text-align: left;
   box-shadow: -2px 0 8px rgba(0,0,0,.15);
+  .color-setting{
+    margin-bottom: 10px;
+    .preview{
+      padding: 10px;
+      display: inline-block;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+      margin-right: 6px;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+  }
 }
 </style>
