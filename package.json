@@ -8,8 +8,10 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "ant-design-vue": "^1.6.2",
     "core-js": "^3.6.5",
     "vue": "^2.6.11",
+    "vue-color": "^2.7.1",
     "vue-router": "^3.2.0"
   },
   "devDependencies": {
@@ -19,6 +21,10 @@
     "@vue/cli-service": "~4.4.0",
     "@vue/eslint-config-standard": "^5.1.2",
     "babel-eslint": "^10.1.0",
+    "babel-plugin-import": "^1.13.0",
+    "commitizen": "^4.1.2",
+    "conventional-changelog": "^3.1.21",
+    "cz-conventional-changelog": "^3.2.0",
     "eslint": "^6.7.2",
     "eslint-plugin-import": "^2.20.2",
     "eslint-plugin-node": "^11.1.0",
@@ -28,6 +34,11 @@
     "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
     "vue-template-compiler": "^2.6.11"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
   },
   "eslintConfig": {
     "root": true,

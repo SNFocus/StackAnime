@@ -1,24 +1,31 @@
 <template>
-  <div id="animation-box">
-    <template v-if="animeLoader">
-      <div
-        v-for="item in animeLoader.animations"
-        :key="item._id"
-        class="anime-item"
-        :class="{animate: item.animate}"
-        :style="`left: ${item.x}px; top: ${item.y}px`">
-        {{item.val}}
+  <a-row style="height: 100%;">
+    <a-col :span="16"  style="height: 100%;">
+      <div id="animation-box">
+        <template v-if="animeLoader">
+          <div
+            v-for="item in animeLoader.animations"
+            :key="item._id"
+            class="anime-item"
+            :class="{animate: item.animate}"
+            :style="`left: ${item.x}px; top: ${item.y}px`">
+            {{item.val}}
+          </div>
+        </template>
       </div>
-    </template>
-
-    <div v-for="(stack, index) in stackList" :key="'s' + index">
-      <div> {{ stack.children.map(t=>t.val).join(', ')}} </div>
-    </div>
-  </div>
+    </a-col>
+    <a-col :span="8" style="height: 100%;">
+        <config-pane />
+    </a-col>
+  </a-row>
 </template>
 <script>
 import { AnimeLoader, Stack } from './Stack.js'
+import ConfPane from '@/components/ConfigPane.vue'
 export default {
+  components: {
+    [ConfPane.name]: ConfPane
+  },
   data () {
     return {
       data: [[1, 2, 3], [4, 5, 6]],
