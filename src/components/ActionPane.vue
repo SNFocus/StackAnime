@@ -24,6 +24,32 @@
         </a-col>
     </a-row>
 
+    <div class="action-bar">
+      <a-tooltip title="播放动画">
+        <a-icon type="play-circle" v-show="stepRecord.length" @click.native="runRecord"/>
+      </a-tooltip>
+
+      <a-tooltip title="录制动作">
+        <a-icon type="play-circle" v-show="!stepRecord.length && !startRecord" @click.native="toggleRecord"/>
+      </a-tooltip>
+
+      <a-tooltip title="结束录制">
+        <a-icon v-show="startRecord" type="check-circle" @click.native="toggleRecord" />
+      </a-tooltip>
+
+      <a-tooltip title="再来一次">
+        <a-icon type="redo" v-show="startRecord" @click.native="redo" />
+      </a-tooltip>
+
+      <a-tooltip title="撤销">
+        <a-icon type="undo" v-show="startRecord" @click.native="undo" />
+      </a-tooltip>
+
+      <a-tooltip title="暂停">
+        <a-icon type="pause-circle" />
+      </a-tooltip>
+    </div>
+
     <a-modal v-model="visible" title="设置" @ok="handleOk">
       <!-- Push -->
       <div v-if="activeType === 'push'">
@@ -47,8 +73,8 @@
               <a-select-option
                 v-for="(name, index) in reflectName"
                 :key="index"
-                v-show="name !== activeStack"
-                :value="name">
+                :value="name"
+                :disabled="name == activeStack">
                 {{name}}
               </a-select-option>
             </a-select>
@@ -72,7 +98,9 @@ export default {
       exchangeFrom: null,
       exchangeTo: null,
       mergeLen: null,
-      mergeData: null
+      mergeData: null,
+      stepRecord: [],
+      startRecord: false
     }
   },
   mounted () {
@@ -90,21 +118,54 @@ export default {
       run ? (this.visible = true) : this.handleOk()
     },
 
-    addAction (args = []) {
-      const stack = this.getStack(this.activeStack)
-      stack.addAction(this.activeType, ...args)
+    addAction (name, type, args = []) {
+      const stack = this.getStack(name)
+      stack.addAction(type, ...args)
     },
 
     handleOk () {
       const args = {
         push: [this.pushData],
-        exchange: [this.activeStack, this.exchangeTo],
+        exchange: [this.getStack(this.activeStack), this.getStack(this.exchangeTo)],
         merge: [this.getStack(this.activeStack), this.mergeLen, this.mergeData]
       }
-      this.addAction(args[this.activeType])
+      const actionArgs = [this.activeStack, this.activeType, args[this.activeType]]
+      if (this.startRecord) {
+        this.stepRecord.push(actionArgs)
+      } else {
+        this.addAction(...actionArgs)
+      }
       this.visible = false
+    },
+
+    runRecord () {
+      this.stepRecord.forEach(args => {
+        args && this.addAction(...args)
+      })
+    },
+
+    clearRecord () {
+      this.startRecord = []
+    },
+
+    redo () {
+      if (this.stepRecord.length) {
+        this.stepRecord.push(this.stepRecord[this.stepRecord.length - 1])
+      }
+    },
+
+    undo () {
+      this.stepRecord.pop()
+    },
+
+    toggleRecord () {
+      if (this.startRecord === false) {
+        this.stepRecord = []
+      }
+      this.startRecord = !this.startRecord
     }
   },
+
   watch: {
     data (val) {
       this.reflectName = val.map((d, i) => ('stack_' + i))
@@ -133,6 +194,15 @@ export default {
       background:yellowgreen;
       margin-right: 6px;
       color: #333;
+    }
+  }
+  .action-bar{
+    position: absolute;
+    bottom: 14px;
+    right: 36px;
+    > i {
+      font-size: 24px;
+      margin-right: 6px;
     }
   }
 }

@@ -163,12 +163,12 @@ export default {
     const cb = () => {
       const stack1 = this.stackList[0]
       const stack2 = this.stackList[2]
-      stack1.addAction('push', 18)
-      stack1.addAction('push', 12)
-      stack1.addAction('push', 13)
-      stack1.addAction('pop')
-      stack1.addAction('merge', stack1, 2, 23)
-      stack1.addAction('push', 19)
+      // stack1.addAction('push', 18)
+      // stack1.addAction('push', 12)
+      // stack1.addAction('push', 13)
+      // stack1.addAction('pop')
+      // stack1.addAction('merge', stack1, 2, 23)
+      // stack1.addAction('push', 19)
       stack1.addAction('exchange', stack1, stack2)
     }
     window.cb = cb

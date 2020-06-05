@@ -108,6 +108,10 @@ const actionTask = []
 const diffH = (from, to, fh, th) => {
   return (from.length() - 1) * fh - to.length() * th
 }
+// 用于覆盖
+const diffH2 = (from, to, fh, th) => {
+  return (from.length() - 1) * fh - (to.length() - 1) * th
+}
 
 export class Stack {
   static id = 0
@@ -235,18 +239,37 @@ export class Stack {
 
   // [单一方法]
   // 交换栈顶数据
-  exchange (from, to) {
+  // overlay == true 覆盖最上面的元素 否则追加
+  popTo (from, to, overlay = false, cb) {
     const topVal = from.getHead()
     if (!topVal) return
+    const dh = overlay ? diffH2 : diffH
     const offset = this.isLandscape
-      ? [-diffH(from, to, from.cw, to.cw), to.sy - from.sy]
-      : [to.sx - from.sx, diffH(from, to, from.ch, to.ch)]
+      ? [-dh(from, to, from.cw, to.cw), to.sy - from.sy]
+      : [to.sx - from.sx, dh(from, to, from.ch, to.ch)]
     const pos = '0 0,' + offset.join(' ')
+    const callback = cb || (() => { to._push(from._pop()) })
     Stack.animeLoader.addTask(
       'startAnime',
       topVal._id,
       pos,
-      this.afterAction(() => to._push(from._pop())))
+      this.afterAction(callback),
+      overlay ? 1 : undefined
+    )
+  }
+
+  overlay (from, to, cb) {
+    this.popTo(from, to, true, cb)
+  }
+
+  exchange (from, to) {
+    this.overlay(from, to, () => {})
+    this.overlay(to, from, () => {
+      const t = to._pop()
+      const f = from._pop()
+      to._push(f)
+      from._push(t)
+    })
   }
 
   // [单一方法]
@@ -258,12 +281,11 @@ export class Stack {
       Stack.animeLoader.delItem(id)
       from._pop()
     }
-    const count = fromLen < len ? fromLen : len
     const afterFunc = () => ids.forEach(delData)
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < len; i++) {
       const id = from.getItemByIdx(fromLen - i - 1)._id
       ids.push(id)
-      const cb = i === count - 1 ? this.afterAction(afterFunc) : undefined
+      const cb = i === len - 1 ? this.afterAction(afterFunc) : undefined
       const offset = this.isLandscape ? `${from.cw * i} 0` : `0 -${from.ch * i}`
       Stack.animeLoader.addTask('startAnime', id, `0 0, ${offset}`, cb)
     }
@@ -272,8 +294,9 @@ export class Stack {
   // [组合方法]
   // 合并元素并生成合并值
   merge (from, len, mergeVal) {
-    const startPos = this.isLandscape ? `${this.cw * (len - 1)} 0` : `0 -${this.ch * (len - 1)}`
-    this.addAction('mergeItem', from, len)
+    const count = from.length() < len ? from.length() : len
+    const startPos = this.isLandscape ? `${this.cw * (count - 1)} 0` : `0 -${this.ch * (count - 1)}`
+    this.addAction('mergeItem', from, count)
     this.addAction('push', mergeVal, startPos)
   }
 
