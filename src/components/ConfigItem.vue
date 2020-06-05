@@ -1,7 +1,7 @@
 <template>
   <a-row functional class="conf-item">
-    <a-col :span="8" class="conf-item__label">{{$attrs.label}}</a-col>
-    <a-col :span="16"  class="conf-item__input">
+    <a-col :span="$attrs.labelSpan || 8" class="conf-item__label">{{$attrs.label}}</a-col>
+    <a-col :span="$attrs.contentSpan || 16"  class="conf-item__input">
       <slot></slot>
     </a-col>
   </a-row>

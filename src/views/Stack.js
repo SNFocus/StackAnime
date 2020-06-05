@@ -209,10 +209,10 @@ export class Stack {
 
   // [单一方法]
   // 入栈
-  push (val) {
+  push (val, startPos) {
     const item = this.createItem(val, this.length())
     const offset = this.isLandscape ? `${this.cw} 0` : `0 -${this.ch}`
-    Stack.animeLoader.addTask('startAnime', item._id, `${offset} , 0 0`,
+    Stack.animeLoader.addTask('startAnime', item._id, `${startPos || offset} , 0 0`,
       this.afterAction(() => this.children.push(item)))
   }
 
@@ -258,11 +258,12 @@ export class Stack {
       Stack.animeLoader.delItem(id)
       from._pop()
     }
+    const count = fromLen < len ? fromLen : len
     const afterFunc = () => ids.forEach(delData)
-    for (let i = 0; i < len; i++) {
+    for (let i = 0; i < count; i++) {
       const id = from.getItemByIdx(fromLen - i - 1)._id
       ids.push(id)
-      const cb = i === len - 1 ? this.afterAction(afterFunc) : undefined
+      const cb = i === count - 1 ? this.afterAction(afterFunc) : undefined
       const offset = this.isLandscape ? `${from.cw * i} 0` : `0 -${from.ch * i}`
       Stack.animeLoader.addTask('startAnime', id, `0 0, ${offset}`, cb)
     }
@@ -271,8 +272,9 @@ export class Stack {
   // [组合方法]
   // 合并元素并生成合并值
   merge (from, len, mergeVal) {
+    const startPos = this.isLandscape ? `${this.cw * (len - 1)} 0` : `0 -${this.ch * (len - 1)}`
     this.addAction('mergeItem', from, len)
-    this.addAction('push', mergeVal)
+    this.addAction('push', mergeVal, startPos)
   }
 
   /** ****  下划线开头的方法不执行动画  ******/
