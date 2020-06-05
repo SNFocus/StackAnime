@@ -31,7 +31,8 @@
           ref='action'
           class="pane"
           :class="[showConfigPane?'hide':'show']"
-          :data="stackList" />
+          :data="stackList"
+          :reload="reloadStack" />
         <div
           ref='config'
           class="config-pane pane"
@@ -149,6 +150,12 @@ export default {
     }
   },
 
+  created () {
+    this.load = debounce(this.loadStackList, 500)
+    this.reloadStack = this.load.bind(this, 'data')
+    window.reload = this.reloadStack
+  },
+
   mounted () {
     document.body.addEventListener('click', (ev) => {
       const picker = document.querySelector('.color-picker')
@@ -158,15 +165,14 @@ export default {
       this.pickerStyle.top = '66%'
       this.pickerStyle.left = '100%'
     })
-    this.init = debounce(this.loadStackList, 500)
-    this.init()
+    this.load('init')
     const cb = () => {
       const stack1 = this.stackList[0]
       const stack2 = this.stackList[2]
       // stack1.addAction('push', 18)
       // stack1.addAction('push', 12)
-      // stack1.addAction('push', 13)
-      // stack1.addAction('pop')
+      stack1.addAction('pop')
+      stack1.addAction('push', 13)
       // stack1.addAction('merge', stack1, 2, 23)
       // stack1.addAction('push', 19)
       stack1.addAction('exchange', stack1, stack2)
@@ -202,25 +208,34 @@ export default {
       this.animeLoader.clearTask()
     },
 
-    refreshStacks () {
+    refreshStacks (initChildren) {
       const box = this.$refs.box
       const stackNum = this.data.length
-      if (this.stackList && this.stackList.length) {
-        this.stackList.forEach((s, i) => {
-          const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
-          s.refresh(x, y, sw, sh, isLandscape)
-        })
-      } else {
-        this.stackList = this.data.map((children, i) => {
-          const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
-          return new Stack(x, y, sw, sh, isLandscape, children)
-        })
-      }
+      initChildren && this.animeLoader.clearItem()
+      this.stackList.forEach((s, i) => {
+        const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
+        const child = initChildren ? this.data[i] : undefined
+        s.refresh(x, y, sw, sh, isLandscape, child)
+      })
     },
 
-    loadStackList () {
+    initStack () {
+      const box = this.$refs.box
+      const stackNum = this.data.length
+      this.stackList = this.data.map((children, i) => {
+        const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
+        return new Stack(x, y, sw, sh, isLandscape, children)
+      })
+    },
+
+    loadStackList (type) {
+      const FOR = {
+        init: this.initStack.bind(this),
+        style: this.refreshStacks.bind(this, false), // 只重置样式
+        data: this.refreshStacks.bind(this, true) // 需要重置children数据
+      }
       this.initLoader()
-      this.refreshStacks()
+      FOR[type] && FOR[type]()
     },
 
     setColor (ev, key) {
@@ -248,7 +263,7 @@ export default {
   watch: {
     config: {
       handler: function (val) {
-        this.init()
+        this.load('style')
       },
       deep: true
     }

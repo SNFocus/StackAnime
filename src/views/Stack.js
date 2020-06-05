@@ -81,6 +81,10 @@ export class AnimeLoader {
     }
   }
 
+  clearItem () {
+    this.animations.length = 0
+  }
+
   clearAnimeFlag () {
     setTimeout(() =>
       this.animations.forEach(t => {
@@ -203,12 +207,16 @@ export class Stack {
     return item
   }
 
-  refresh (sx, sy, cw, ch, isLandscape) {
+  refresh (sx, sy, cw, ch, isLandscape, children) {
     this.setProp(sx, sy, cw, ch, isLandscape)
-    this.children.forEach((child, idx) => {
-      const { x, y } = this.getPosByIndex(idx)
-      Stack.animeLoader.refreshItem(child._id, x, y, child.val)
-    })
+    if (children) {
+      this.children = children.map((t, i) => this.createItem(t, i))
+    } else {
+      this.children.forEach((child, idx) => {
+        const { x, y } = this.getPosByIndex(idx)
+        Stack.animeLoader.refreshItem(child._id, x, y, child.val)
+      })
+    }
   }
 
   // [单一方法]
