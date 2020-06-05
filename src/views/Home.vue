@@ -1,7 +1,7 @@
 <template>
   <a-row style="height: 100%;">
     <a-col :span="16"  style="height: 100%;">
-      <div id="animation-box" :style="{background: styleConfig.containerBg}">
+      <div id="animation-box" :style="{background: styleConfig.containerBg}" ref="box">
         <template v-if="animeLoader">
           <div
             v-for="item in animeLoader.animations"
@@ -13,7 +13,7 @@
               background: item.animate ? styleConfig.activeChildBg : styleConfig.normalChildBg,
               color: item.animate ? styleConfig.activeChildColor : styleConfig.normalChildColor,
               width: config.childWidth + 'px', height: config.childHeight + 'px',
-              transition: `left ${config.duration / 1000}s, top ${config.duration / 1000}s`
+              transition: `background .5s, left ${config.duration / 1000}s, top ${config.duration / 1000}s`
             }">
             {{item.val}}
           </div>
@@ -21,29 +21,32 @@
       </div>
     </a-col>
     <a-col :span="8" style="height: 100%;">
-       <div class="config-pane">
+       <div class="config-pane pane" :class="{show: activePane === 'config'}">
         <config-item label="容器间隔">
-          <a-input-number v-model="config.stackGap" />
+          <a-input-number v-model.lazy="config.stackGap" />
         </config-item>
 
         <config-item label="元素间隔">
-          <a-input-number v-model="config.childGap" />
+          <a-input-number v-model.lazy="config.childGap" />
         </config-item>
 
         <config-item label="元素宽度">
-          <a-input-number v-model="config.childWidth"  />
+          <a-input-number v-model.lazy="config.childWidth"  />
         </config-item>
 
         <config-item label="元素高度">
-          <a-input-number v-model="config.childHeight" />
+          <a-input-number v-model.lazy="config.childHeight" />
         </config-item>
 
         <config-item label="动画时间">
-          <a-input-number v-model="config.duration" @change="onDurationChange" />
+          <a-input-number v-model.lazy="config.duration" @change="onDurationChange" />
         </config-item>
 
         <config-item label="栈方向">
-          <a-select v-model="orientation" style="width: 120px" @change="onOrientationChange">
+          <a-select
+          v-model="orientation"
+          style="width: 100%;max-width: 200px;"
+          @change="val => config.isLandscape = val === 'landscape'">
             <a-select-option value="landscape">
               横向
             </a-select-option>
@@ -66,12 +69,24 @@
             class="color-setting"
             v-for="key in Object.keys(styleOption)"
             :key="key"
-            @click="setColor(key)">
+            @click="setColor($event, key)">
               <span class="preview" :style="{ background: styleConfig[key] }"></span>
               <span>{{ styleOption[key] }}</span>
             </a-col>
         </a-row>
-        <color-picker v-if="editingColor" v-model="color" @input="onColorChange"/>
+        <color-picker
+        v-model="color"
+        class="color-picker"
+        :style="pickerStyle"
+        @input="onColorChange"/>
+      </div>
+      <div class="pane-tabs">
+        <a-tooltip title="动作面板">
+          <a-icon type="rocket" @click.native="activePane = 'action'"/>
+        </a-tooltip>
+        <a-tooltip title="设置面板">
+          <a-icon type="setting" @click.native="activePane = 'config'" />
+        </a-tooltip>
       </div>
     </a-col>
   </a-row>
@@ -79,6 +94,7 @@
 <script>
 import { AnimeLoader, Stack } from './Stack.js'
 import { Chrome } from 'vue-color'
+import { debounce, throttle } from '@/assets/utils.js'
 export default {
   components: {
     'color-picker': Chrome
@@ -86,21 +102,26 @@ export default {
   data () {
     return {
       data: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+      activePane: 'config', // or action
       stackList: [],
       animeLoader: null,
       actions: [],
       orientation: 'landscape',
       color: '#FFF',
       editingColor: null,
+      pickerStyle: {
+        top: '66%',
+        left: '100%'
+      },
       config: {
         duration: 500,
-        childGap: 6, // 元素之间的间隔
+        childGap: 16, // 元素之间的间隔
         stackGap: 50, // 栈之间的间隔
-        childWidth: 30, // 元素宽度
-        childHeight: 30, // 元素高度
+        childWidth: 50, // 元素宽度
+        childHeight: 50, // 元素高度
         isLandscape: true, // 是否是横向
-        toLeft: 200, // 横向时， 到容器左边的距离
-        toBottom: 50 // 竖向时， 到容器底边的距离
+        toLeft: 400, // 横向时， 到容器左边的距离
+        toBottom: 300 // 竖向时， 到容器底边的距离
       },
       styleOption: {
         containerBg: '画布背景',
@@ -120,7 +141,16 @@ export default {
   },
 
   mounted () {
-    this.initStackList()
+    document.body.addEventListener('click', (ev) => {
+      const picker = document.querySelector('.color-picker')
+      if (!picker) return
+      if (picker === ev.target || picker.contains(ev.target)) return
+      this.editingColor = ''
+      this.pickerStyle.top = '66%'
+      this.pickerStyle.left = '100%'
+    })
+    this.init = debounce(this.loadStackList, 500)
+    this.init()
     const stack1 = this.stackList[0]
     const stack2 = this.stackList[2]
     const cb = () => {
@@ -135,42 +165,73 @@ export default {
     window.cb = cb
   },
   methods: {
-    initStackList () {
-      const box = document.getElementById('animation-box')
-      Stack.animeLoader = new AnimeLoader()
-      this.stackList = this.data.map((item, i) => {
-        return this.getStackPos(i, item, box, this.data.length)
-      })
-      this.animeLoader = Stack.animeLoader
-    },
 
-    getStackPos (index, children, box, num) {
+    getStackProp (index, box, num) {
       const { childWidth, childHeight, stackGap, isLandscape, childGap, toLeft, toBottom } = this.config
-      let x; let y; let sw = childWidth; let sh = childHeight
+      const getStartPos = (p, c) => ((p - num * c - (num - 1) * stackGap) / 2)
+      let x
+      let y
+      const sw = childWidth + childGap
+      const sh = childHeight + childGap
       if (isLandscape) {
-        const startY = (box.clientHeight - num * childHeight - (num - 1) * stackGap) / 2
+        const startY = getStartPos(box.clientHeight, childHeight)
+        y = startY + (childHeight + stackGap) * index
         x = toLeft
-        y = startY + (childWidth + stackGap) * index
-        sw += childGap
       } else {
-        const startX = (box.clientWidth - num * childWidth - (num - 1) * stackGap) / 2
+        const startX = getStartPos(box.clientWidth, childWidth)
         x = startX + (childWidth + stackGap) * index
         y = box.clientHeight - toBottom
-        sh += childGap
       }
-      return new Stack(x, y, sw, sh, isLandscape, children)
+      return { x, y, sw, sh, isLandscape }
     },
-    onOrientationChange (val) {
-      this.config.isLandscape = val === 'landscape'
+
+    initLoader () {
+      if (!this.animeLoader) {
+        Stack.animeLoader = new AnimeLoader()
+        this.animeLoader = Stack.animeLoader
+      }
+      this.animeLoader.clearTask()
     },
-    setColor (key) {
-      this.editingColor = key
-      console.log(this.editingColor)
+
+    refreshStacks () {
+      const box = this.$refs.box
+      const stackNum = this.data.length
+      if (this.stackList && this.stackList.length) {
+        this.stackList.forEach((s, i) => {
+          const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
+          s.refresh(x, y, sw, sh, isLandscape)
+        })
+      } else {
+        this.stackList = this.data.map((children, i) => {
+          const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
+          return new Stack(x, y, sw, sh, isLandscape, children)
+        })
+      }
     },
+
+    loadStackList () {
+      this.initLoader()
+      this.refreshStacks()
+    },
+
+    setColor (ev, key) {
+      setTimeout(() => {
+        const { pageX, pageY } = ev
+        this.pickerStyle.top = (pageY - 10) + 'px'
+        this.pickerStyle.left = (pageX + 10) + 'px'
+        this.editingColor = key
+      }, 0)
+    },
+
     onColorChange (color) {
-      this.styleConfig[this.editingColor] = color.hex
-      console.log(this.styleConfig)
+      if (!this.updateStyle) {
+        this.updateStyle = throttle(function (color) {
+          this.styleConfig[this.editingColor] = color.hex
+        }, 800)
+      }
+      this.updateStyle(color)
     },
+
     onDurationChange () {
       this.animeLoader.duration = this.config.duration
     }
@@ -178,8 +239,7 @@ export default {
   watch: {
     config: {
       handler: function (val) {
-        console.log('config change')
-        this.initStackList()
+        this.init()
       },
       deep: true
     }
@@ -194,6 +254,7 @@ export default {
   min-width: 300px;
   min-height: 300px;
   position: relative;
+  transition: background 1s;
 
   .anime-item{
     position: absolute;
@@ -212,23 +273,55 @@ export default {
   }
 
 }
+.pane{
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 1s;
+  &.show{
+    opacity: 1;
+    z-index: 1;
+  }
+}
 
-  .config-pane {
+.config-pane {
+  width: 100%;
+  height: 100%;
+  padding: 18px 20px;
+  text-align: left;
+  box-shadow: -2px 0 8px rgba(0,0,0,.15);
+  ::v-deep .ant-input-number{
     width: 100%;
-    height: 100%;
-    padding: 18px 20px;
-    text-align: left;
-    box-shadow: -2px 0 8px rgba(0,0,0,.15);
-    .color-setting{
-      margin-bottom: 10px;
-      .preview{
-        padding: 10px;
-        display: inline-block;
-        box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
-        margin-right: 6px;
-        vertical-align: middle;
-        cursor: pointer;
-      }
+    max-width: 200px;
+  }
+  .color-picker{
+    position: fixed;
+    opacity: .4;
+    transition: top .5s, left .5s, opacity .5s;
+    &:hover {
+      opacity: 1  ;
     }
   }
+  .color-setting {
+    margin-bottom: 20px;
+    .preview{
+      padding: 10px;
+      display: inline-block;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+      margin-right: 6px;
+      vertical-align: middle;
+      cursor: pointer;
+    }
+  }
+}
+
+.pane-tabs{
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  > i {
+    font-size: 22px;
+    margin-right: 1rem;
+    cursor: pointer;
+  }
+}
 </style>

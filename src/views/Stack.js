@@ -15,6 +15,10 @@ export class AnimeLoader {
     }
   }
 
+  clearTask () {
+    this.animeTask.length = 0
+  }
+
   /**
    * 将偏移量字符串转为数组
    * @param {*} target - 需要进行动画的元素
@@ -57,7 +61,15 @@ export class AnimeLoader {
     }
   }
 
-  addItem (id, val, x, y) {
+  refreshItem (id, x, y, val) {
+    const { target } = this.getItem(id)
+    if (!target) return
+    target.val = val
+    target.x = x
+    target.y = y
+  }
+
+  addItem (id, x, y, val) {
     const item = { _id: id, x, y, val, animate: false }
     this.animations.push(item)
   }
@@ -109,16 +121,16 @@ export class Stack {
    * @param {Number} ch - 栈元素高度
    */
   constructor (sx = 0, sy = 0, cw = 0, ch = 0, isLandscape = false, data = []) {
+    this.setProp(sx, sy, cw, ch, isLandscape)
+    this.children = data.map((t, i) => this.createItem(t, i))
+  }
+
+  setProp (sx, sy, cw, ch, isLandscape) {
     this.sx = sx
     this.sy = sy
     this.cw = cw
     this.ch = ch
     this.isLandscape = isLandscape
-    this.children = data.map((t, i) => this.createItem(t, i))
-  }
-
-  getOffset (x, y) {
-
   }
 
   isEmpty () {
@@ -168,8 +180,7 @@ export class Stack {
     }
   }
 
-  createItem (val, index) {
-    const item = { _id: Stack.idIncrease(), val }
+  getPosByIndex (index) {
     let x, y
     if (this.isLandscape) {
       y = this.sy
@@ -178,8 +189,22 @@ export class Stack {
       x = this.sx
       y = this.sy - this.ch * index
     }
-    Stack.animeLoader.addItem(item._id, val, x, y)
+    return { x, y }
+  }
+
+  createItem (val, index) {
+    const item = { _id: Stack.idIncrease(), val }
+    const { x, y } = this.getPosByIndex(index)
+    Stack.animeLoader.addItem(item._id, x, y, val)
     return item
+  }
+
+  refresh (sx, sy, cw, ch, isLandscape) {
+    this.setProp(sx, sy, cw, ch, isLandscape)
+    this.children.forEach((child, idx) => {
+      const { x, y } = this.getPosByIndex(idx)
+      Stack.animeLoader.refreshItem(child._id, x, y, child.val)
+    })
   }
 
   // [单一方法]

@@ -69,6 +69,7 @@
         </a-col>
     </a-row>
     <color-picker
+     class="color-picker"
      v-if="editingColor"
      v-model="editingColor.value"
      @input="onColorChange"/>
@@ -126,20 +127,31 @@ export default {
       ]
     }
   },
+  mounted () {
+    document.body.addEventListener('click', (ev) => {
+      const picker = document.querySelector('.color-picker')
+      if (picker === ev || picker.contains(ev.target)) return
+      this.editingColor = ''
+    })
+  },
   methods: {
     onChange (val, key) {
       this.emitChange('config', key, val)
     },
+
     onOrientationChange (val) {
       this.config.isLandscape = val === 'landscape'
       this.emitChange('config', 'isLandScape', this.config.isLandscape)
     },
+
     setColor (color) {
       this.editingColor = color
     },
+
     onColorChange (val) {
       this.emitChange('styleConfig', this.editingColor.key, val.hex)
     },
+
     emitChange (type, key, val) {
       this.$emit('change', type, key, val)
     }
