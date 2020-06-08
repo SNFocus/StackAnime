@@ -85,12 +85,15 @@ export class AnimeLoader {
     this.animations.length = 0
   }
 
-  clearAnimeFlag () {
-    setTimeout(() =>
-      this.animations.forEach(t => {
-        t.animate = false
-      }),
-    500)
+  clearAnimeFlag (immediate = false) {
+    const func = () => this.animations.forEach(t => {
+      t.animate = false
+    })
+    if (immediate) {
+      func()
+      return
+    }
+    setTimeout(func, AnimeLoader.duration)
     this.animeTask.shift()
   }
 
@@ -120,6 +123,7 @@ const diffH2 = (from, to, fh, th) => {
 export class Stack {
   static id = 0
   static animeLoader = null
+  static maintainState = false
   combinationActions = ['merge'] // 组合动作 - 该动作涵盖了复数单一动作
   /**
    * @constructor
@@ -171,19 +175,22 @@ export class Stack {
     const actionFunc = this[action].bind(this, ...arg)
     actionTask.push(actionFunc)
     if (actionTask.length === 1) {
-      actionTask[0]()
+      this.loopAction()
     }
   }
 
   loopAction () {
-    actionTask[0] && actionTask[0]()
+    if (actionTask[0]) {
+      Stack.maintainState && Stack.animeLoader.clearAnimeFlag(true)
+      actionTask[0]()
+    }
   }
 
   afterAction (cb) {
     return () => {
       cb && cb()
       actionTask.shift()
-      Stack.animeLoader.addTask('clearAnimeFlag')
+      !Stack.maintainState && Stack.animeLoader.addTask('clearAnimeFlag')
       this.loopAction()
     }
   }

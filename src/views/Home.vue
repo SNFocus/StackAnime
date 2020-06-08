@@ -57,6 +57,20 @@
             <a-input-number v-model.lazy="config.duration" @change="onDurationChange" />
           </config-item>
 
+          <config-item label="动画结束时">
+            <a-select
+              v-model="maintainActiveState"
+              style="width: 100%;max-width: 200px;"
+              @change="onMaintainStateChange">
+              <a-select-option value="maintain">
+                保留元素激活状态
+              </a-select-option>
+              <a-select-option value="restore">
+                恢复元素普通状态
+              </a-select-option>
+            </a-select>
+          </config-item>
+
           <config-item label="栈方向">
             <a-select
             v-model="orientation"
@@ -130,9 +144,10 @@ export default {
         childWidth: 50, // 元素宽度
         childHeight: 50, // 元素高度
         isLandscape: true, // 是否是横向
-        toLeft: 400, // 横向时， 到容器左边的距离
+        toLeft: 200, // 横向时， 到容器左边的距离
         toBottom: 300 // 竖向时， 到容器底边的距离
       },
+      maintainActiveState: 'restore',
       styleOption: {
         containerBg: '画布背景',
         activeChildBg: '活动背景',
@@ -141,11 +156,11 @@ export default {
         normalChildColor: '非活动字色'
       },
       styleConfig: {
-        containerBg: '#E5E5E5',
+        containerBg: '#8bc34a',
         activeChildBg: '#FF9800',
         activeChildColor: '#FFF',
-        normalChildBg: '#FFF',
-        normalChildColor: '#333'
+        normalChildBg: '#1c9030',
+        normalChildColor: '#FFF'
       }
     }
   },
@@ -212,6 +227,7 @@ export default {
       const box = this.$refs.box
       const stackNum = this.data.length
       initChildren && this.animeLoader.clearItem()
+
       this.stackList.forEach((s, i) => {
         const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
         const child = initChildren ? this.data[i] : undefined
@@ -258,6 +274,10 @@ export default {
 
     onDurationChange () {
       this.animeLoader.duration = this.config.duration
+    },
+
+    onMaintainStateChange () {
+      Stack.maintainState = this.maintainActiveState === 'maintain'
     }
   },
   watch: {
@@ -340,21 +360,19 @@ export default {
     left: 0;
     padding: 18px 26px;
     text-align: left;
-    background: #f8f8f8;
     box-shadow: -2px 0 8px rgba(0,0,0,.15), 0 0 6px rgba(0, 0, 0, 0.15);
-    transition: left .5s;
+    transition: left .5s, opacity .5s, z-index .5s;
     overflow: hidden;
+    opacity: 1;
+    z-index: 8;
     &.show{
       left: 26px;
-      z-index: 8;
     }
     &.hide {
       padding-left: 48px;
       cursor: pointer;
-      animation-name: hide;
-      animation-duration: 2.5s;
-      animation-fill-mode: forwards;
-
+      opacity: 0;
+      z-index: -1;
     }
   }
 }
