@@ -94,7 +94,7 @@ export class AnimeLoader {
       return
     }
     setTimeout(func, AnimeLoader.duration)
-    this.animeTask.shift()
+    this.doNextTask()
   }
 
   getItem (id) {
@@ -124,7 +124,7 @@ export class Stack {
   static id = 0
   static animeLoader = null
   static maintainState = false
-  combinationActions = ['merge'] // 组合动作 - 该动作涵盖了复数单一动作
+  combinationActions = ['merge', 'unshift', 'moveStack'] // 组合动作 - 该动作涵盖了复数单一动作
   /**
    * @constructor
    * @param {Number} sx - 栈容器横坐标
@@ -181,8 +181,10 @@ export class Stack {
 
   loopAction () {
     if (actionTask[0]) {
-      Stack.maintainState && Stack.animeLoader.clearAnimeFlag(true)
       actionTask[0]()
+      Stack.maintainState
+        ? Stack.animeLoader.clearAnimeFlag(true)
+        : Stack.animeLoader.addTask('clearAnimeFlag')
     }
   }
 
@@ -190,7 +192,6 @@ export class Stack {
     return () => {
       cb && cb()
       actionTask.shift()
-      !Stack.maintainState && Stack.animeLoader.addTask('clearAnimeFlag')
       this.loopAction()
     }
   }
@@ -207,10 +208,12 @@ export class Stack {
     return { x, y }
   }
 
-  createItem (val, index) {
+  createItem (val, index, addToLoader = true) {
     const item = { _id: Stack.idIncrease(), val }
-    const { x, y } = this.getPosByIndex(index)
-    Stack.animeLoader.addItem(item._id, x, y, val)
+    if (addToLoader) {
+      const { x, y } = this.getPosByIndex(index)
+      Stack.animeLoader.addItem(item._id, x, y, val)
+    }
     return item
   }
 
@@ -232,7 +235,10 @@ export class Stack {
     const item = this.createItem(val, this.length())
     const offset = this.isLandscape ? `${this.cw} 0` : `0 -${this.ch}`
     Stack.animeLoader.addTask('startAnime', item._id, `${startPos || offset} , 0 0`,
-      this.afterAction(() => this.children.push(item)))
+      this.afterAction(() => {
+        console.log('after push')
+        this.children.push(item)
+      }))
   }
 
   // [单一方法]
@@ -255,7 +261,7 @@ export class Stack {
   // [单一方法]
   // 交换栈顶数据
   // overlay == true 覆盖最上面的元素 否则追加
-  popTo (from, to, overlay = false, cb) {
+  popTo (from, to, cb, overlay = false) {
     const topVal = from.getHead()
     if (!topVal) return
     const dh = overlay ? diffH2 : diffH
@@ -273,8 +279,36 @@ export class Stack {
     )
   }
 
+  moveItem (id, pos, cb, gap = 1) {
+    Stack.animeLoader.addTask('startAnime', id, pos, this.afterAction(cb), gap)
+  }
+
+  moveStack () {
+    const offsetEnd = this.isLandscape ? `0 0,${this.cw} 0` : `0 0,0 -${this.ch}`
+    this.children.forEach((c) => {
+      this.addAction('moveItem', c._id, offsetEnd)
+    })
+  }
+
+  unshiftItem (val, immediate = true) {
+    const item = this.createItem(val, 0)
+    const offset = this.isLandscape ? `-${this.cw} 0, 0 0` : `0 ${this.ch}, 0 0`
+    Stack.animeLoader.addTask(
+      'startAnime',
+      item._id,
+      offset,
+      this.afterAction(() => this.children.unshift(item)),
+      immediate ? 1 : undefined
+    )
+  }
+
+  unshift (val) {
+    this.addAction('unshiftItem', val)
+    this.addAction('moveStack')
+  }
+
   overlay (from, to, cb) {
-    this.popTo(from, to, true, cb)
+    this.popTo(from, to, cb, true)
   }
 
   exchange (from, to) {
