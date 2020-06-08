@@ -31,8 +31,10 @@
           ref='action'
           class="pane"
           :class="[showConfigPane?'hide':'show']"
+          :source="data"
           :data="stackList"
-          :reload="reloadStack" />
+          :reload="reloadStack"
+          @change="setData" />
         <div
           ref='config'
           class="config-pane pane"
@@ -51,24 +53,6 @@
 
           <config-item label="元素高度">
             <a-input-number v-model.lazy="config.childHeight" />
-          </config-item>
-
-          <config-item label="动画时间">
-            <a-input-number v-model.lazy="config.duration" @change="onDurationChange" />
-          </config-item>
-
-          <config-item label="动画结束时">
-            <a-select
-              v-model="maintainActiveState"
-              style="width: 100%;max-width: 200px;"
-              @change="onMaintainStateChange">
-              <a-select-option value="maintain">
-                保留元素激活状态
-              </a-select-option>
-              <a-select-option value="restore">
-                恢复元素普通状态
-              </a-select-option>
-            </a-select>
           </config-item>
 
           <config-item label="栈方向">
@@ -92,6 +76,25 @@
           <config-item label="距离底部" v-else>
             <a-input-number v-model="config.toBottom" />
           </config-item>
+
+          <config-item label="动画时间">
+            <a-input-number v-model.lazy="config.duration" @change="onDurationChange" />
+          </config-item>
+
+          <config-item label="动画结束时">
+            <a-select
+              v-model="maintainActiveState"
+              style="width: 100%;max-width: 200px;"
+              @change="onMaintainStateChange">
+              <a-select-option value="maintain">
+                保留元素激活状态
+              </a-select-option>
+              <a-select-option value="restore">
+                恢复元素普通状态
+              </a-select-option>
+            </a-select>
+          </config-item>
+
           <a-row>
             <a-col
               :span="12"
@@ -238,6 +241,7 @@ export default {
     initStack () {
       const box = this.$refs.box
       const stackNum = this.data.length
+      this.animeLoader.clearItem()
       this.stackList = this.data.map((children, i) => {
         const { x, y, sw, sh, isLandscape } = this.getStackProp(i, box, stackNum)
         return new Stack(x, y, sw, sh, isLandscape, children)
@@ -278,6 +282,11 @@ export default {
 
     onMaintainStateChange () {
       Stack.maintainState = this.maintainActiveState === 'maintain'
+    },
+
+    setData (data) {
+      this.data = data
+      this.initStack()
     }
   },
   watch: {
@@ -362,7 +371,8 @@ export default {
     text-align: left;
     box-shadow: -2px 0 8px rgba(0,0,0,.15), 0 0 6px rgba(0, 0, 0, 0.15);
     transition: left .5s, opacity .5s, z-index .5s;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     opacity: 1;
     z-index: 8;
     &.show{

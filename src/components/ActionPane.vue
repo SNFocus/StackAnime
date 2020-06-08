@@ -1,5 +1,13 @@
 <template>
   <div class="action-pane" :class="{recording: startRecord}">
+    <config-item label="数据源" :labelSpan="4" :contentSpan="18">
+      <a-button @click="toggleEditing" size="small" style="margin-bottom: 10px;">
+        {{editing ? '保存' : '编辑数据源'}}
+      </a-button>
+    </config-item>
+    <div style="overflow: hidden;transition: height .6s;" :style="{height: editing ? '86vh' : '0'}">
+      <a-textarea style="height: 100%;" v-model="sourceStr" ref="sourceEditor" />
+    </div>
     <a-divider orientation="left">
       操作区
     </a-divider>
@@ -9,9 +17,11 @@
           class="data-preview"
           v-for="(name, index) in reflectName"
           :key="name">
-            <a-input v-model="reflectName[index]"
+            <!-- <a-input v-model=""
               class="action-btn action-btn__input"
-              size="small" />
+              size="small"
+              disabled /> -->
+            <span style="margin-right: 6px;">{{reflectName[index]}}</span>
             <span
               class="preview-item"
               v-for="item in data[index].children"
@@ -51,7 +61,7 @@
       </a-tooltip>
 
       <a-tooltip title="录制动作">
-        <a-icon type="play-circle" v-show="!startRecord" @click.native="toggleRecord"/>
+        <a-icon type="play-circle" v-show="!startRecord && stepRecord.length === 0" @click.native="toggleRecord"/>
       </a-tooltip>
 
       <a-tooltip title="结束录制">
@@ -63,7 +73,7 @@
       </a-tooltip>
 
       <a-tooltip title="重置记录">
-        <a-icon type="undo" v-show="stepRecord.length" @click.native="stepRecord = []"/>
+        <a-icon type="delete" v-show="stepRecord.length" @click.native="stepRecord = []"/>
       </a-tooltip>
 
       <!-- <a-tooltip title="暂停">
@@ -106,11 +116,20 @@
 </template>
 
 <script>
+const sourceFormat = source => {
+  const content = source.map(t => {
+    return `[${t.join(', ')}]`
+  }).join(',\n  ')
+  return `[
+  ${content}
+]`
+}
 export default {
   name: 'action-pane',
-  props: ['data', 'reload'],
+  props: ['data', 'source', 'reload'],
   data () {
     return {
+      sourceStr: sourceFormat(this.source),
       reflectName: [],
       visible: false,
       activeType: null,
@@ -121,7 +140,8 @@ export default {
       mergeLen: null,
       mergeData: null,
       stepRecord: [],
-      startRecord: false
+      startRecord: false,
+      editing: false
     }
   },
   methods: {
@@ -165,6 +185,23 @@ export default {
 
     toggleRecord () {
       this.startRecord = !this.startRecord
+    },
+
+    toggleEditing () {
+      this.editing = !this.editing
+      if (this.editing) {
+        this.sourceStr = sourceFormat(this.source)
+      }
+    }
+  },
+  mounted () {
+    const vm = this
+    this.$refs.sourceEditor.$el.onblur = function () {
+      try {
+        const source = JSON.parse(vm.sourceStr)
+        vm.$emit('change', source)
+        this.editing = false
+      } catch (error) { }
     }
   },
 
@@ -179,13 +216,14 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 .action-pane {
+  padding-bottom: 50px;
   &.recording{
     &::after{
       content: '';
       width: 15px;
       height: 15px;
-      position: absolute;
-      right: 40px;
+      position: fixed;
+      right: 20px;
       top: 10px;
       background: red;
       border-radius: 50%;
@@ -198,7 +236,7 @@ export default {
       height: 30px;
     }
     .stack-actions{
-      transition: height 1s;
+      transition: height .5s;
       height: 0;
       overflow: hidden;
       margin-top: 6px;
@@ -221,15 +259,15 @@ export default {
     }
   }
   .action-bar{
-    position: absolute;
-    width: 100%;
-    bottom: 14px;
-    left: 10px;
-    text-align: right;
-    padding-right: 46px;
+    position: fixed;
+    width: 12px;
+    display: flex;
+    bottom: 10px;
+    right: 24px;
+    flex-direction: column;
     > i {
       font-size: 24px;
-      margin-right: 6px;
+      margin:8px 0px;
       cursor: pointer;
     }
   }
