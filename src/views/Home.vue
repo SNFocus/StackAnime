@@ -1,6 +1,6 @@
 <template>
-  <a-row style="height: 100%;">
-    <a-col :span="16"  style="height: 100%;">
+  <a-row style="height: 100%;overflow: auto;overflow-x: hidden;">
+    <a-col :xs="24" :sm="14" :md="15" :lg="16" :xl="17" style="height: 100%;">
       <div id="animation-box" :style="{background: styleConfig.containerBg}" ref="box">
         <template v-if="animeLoader">
           <div
@@ -20,7 +20,7 @@
         </template>
       </div>
     </a-col>
-    <a-col :span="8" style="height: 100%;">
+    <a-col :xs="24" :sm="10" :md="9" :lg="8" :xl="7" style="height: 100%;">
       <div  class="pane-box">
         <div class="label" @click="showConfigPane = !showConfigPane">
           <span class="label__content">
@@ -97,7 +97,7 @@
 
           <a-row>
             <a-col
-              :span="12"
+              :span="8"
               class="color-setting"
               v-for="key in Object.keys(styleOption)"
               :key="key"
@@ -186,14 +186,14 @@ export default {
     this.load('init')
     const cb = () => {
       const stack1 = this.stackList[0]
-      // const stack2 = this.stackList[2]
-      // stack1.addAction('pop')
-      // stack1.addAction('push', 18)
-      // stack1.addAction('push', 12)
-      // stack1.addAction('merge', stack1, 2, 23)
-      // stack1.addAction('push', 19)
-      // stack1.addAction('exchange', stack1, stack2)
+      const stack2 = this.stackList[2]
+      stack1.addAction('pop')
       stack1.addAction('unshift', 13)
+      stack1.addAction('unshift', 13)
+      stack1.addAction('pop')
+      stack1.addAction('merge', 2, 23)
+      // stack1.addAction('push', 12)
+      stack1.addAction('exchange', stack2)
     }
     window.cb = cb
   },

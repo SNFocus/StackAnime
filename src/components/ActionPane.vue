@@ -1,40 +1,49 @@
 <template>
   <div class="action-pane" :class="{recording: startRecord}">
-    <config-item label="数据源" :labelSpan="4" :contentSpan="18">
+    <config-item label="数据源" :labelSpan="4" :contentSpan="18" style="margin-bottom: 0;">
       <a-button @click="toggleEditing" size="small" style="margin-bottom: 10px;">
         {{editing ? '保存' : '编辑数据源'}}
       </a-button>
     </config-item>
-    <div style="overflow: hidden;transition: height .6s;" :style="{height: editing ? '86vh' : '0'}">
+    <div style="width: 100%;overflow: hidden;transition: height .6s;" :style="{height: editing ? '86vh' : '0'}">
       <a-textarea style="height: 100%;" v-model="sourceStr" ref="sourceEditor" />
     </div>
     <a-divider orientation="left">
       操作区
     </a-divider>
     <a-row>
-        <a-col
-          :span="24"
-          class="data-preview"
-          v-for="(name, index) in reflectName"
-          :key="name">
-            <!-- <a-input v-model=""
-              class="action-btn action-btn__input"
-              size="small"
-              disabled /> -->
-            <span style="margin-right: 6px;">{{reflectName[index]}}</span>
-            <span
+      <a-col :span="24">
+
+        <div class="stack-actions">
+              <a-button size="small" class="action-btn" @click="openModal('unshift')">Unshift</a-button>
+              <a-button size="small" class="action-btn" @click="openModal('pop', false)">Pop</a-button>
+              <a-button size="small" class="action-btn" @click="openModal('popTo')">PopTo</a-button>
+              <a-button size="small" class="action-btn" @click="openModal('push')">Push</a-button>
+              <a-button size="small" class="action-btn" @click="openModal('merge')">Merge</a-button>
+              <a-button size="small" class="action-btn" @click="openModal('exchange')">Exchange</a-button>
+            </div>
+      </a-col>
+      <a-radio-group v-model="activeStack">
+    <a-radio
+    v-for="(name, index) in reflectName"
+    :style="{
+        display: 'block',
+        height: '30px',
+        lineHeight: '30px',
+      }"
+      class="data-preview"
+      :key="name"
+      :value="name">
+      <span style="margin-right: 6px;">{{reflectName[index]}}</span>
+      <span
               class="preview-item"
               v-for="item in data[index].children"
               :key="item._id">
               {{ item.val }}
             </span>
-            <div class="stack-actions">
-              <a-button size="small" class="action-btn" @click="openModal(name, 'pop', false)">Pop</a-button>
-              <a-button size="small" class="action-btn" @click="openModal(name, 'push')">Push</a-button>
-              <a-button size="small" class="action-btn" @click="openModal(name, 'merge')">Merge</a-button>
-              <a-button size="small" class="action-btn" @click="openModal(name, 'exchange')">Exchange</a-button>
-            </div>
-          </a-col>
+    </a-radio>
+  </a-radio-group>
+
     </a-row>
     <a-divider orientation="left" v-if="stepRecord.length">
       动画记录
@@ -88,6 +97,11 @@
           <a-input v-model="pushData" />
         </config-item>
       </div>
+      <div v-if="activeType === 'unshift'">
+        <config-item label="入队值" :labelSpan="3">
+          <a-input v-model="unshiftData" />
+        </config-item>
+      </div>
       <div v-if="activeType === 'merge'">
         <config-item label="合并数量"   :labelSpan="3">
           <a-input-number :min="2" v-model="mergeLen" />
@@ -96,10 +110,10 @@
           <a-input v-model="mergeData" />
         </config-item>
       </div>
-      <div v-if="activeType === 'exchange'" >
-        <config-item label="交换对象"  :labelSpan="3">
+      <div v-if="['exchange', 'popTo'].includes(activeType)" >
+        <config-item label="替换对象"  :labelSpan="3">
           <a-select
-            v-model="exchangeTo"
+            v-model="toStack"
             style="width: 100%;max-width: 200px;">
               <a-select-option
                 v-for="(name, index) in reflectName"
@@ -136,12 +150,14 @@ export default {
       activeStack: null,
       pushData: null,
       exchangeFrom: null,
-      exchangeTo: null,
+      toStack: null,
       mergeLen: null,
       mergeData: null,
       stepRecord: [],
       startRecord: false,
-      editing: false
+      editing: false,
+      unshiftData: null,
+      editStack: ''
     }
   },
   methods: {
@@ -150,10 +166,13 @@ export default {
       return this.data[index]
     },
 
-    openModal (name, type, run = true) {
-      this.activeStack = name
-      this.activeType = type
-      run ? (this.visible = true) : this.handleOk()
+    openModal (type, run = true) {
+      if (this.activeStack) {
+        this.activeType = type
+        run ? (this.visible = true) : this.handleOk()
+      } else {
+        this.$message.success('请先选择目标数据')
+      }
     },
 
     addAction (name, type, args = []) {
@@ -163,9 +182,11 @@ export default {
 
     handleOk () {
       const args = {
+        unshift: [this.unshiftData],
         push: [this.pushData],
-        exchange: [this.getStack(this.activeStack), this.getStack(this.exchangeTo)],
-        merge: [this.getStack(this.activeStack), this.mergeLen, this.mergeData]
+        exchange: [this.getStack(this.toStack)],
+        merge: [this.mergeLen, this.mergeData],
+        popTo: [this.getStack(this.toStack)]
       }
       const actionArgs = [this.activeStack, this.activeType, args[this.activeType]]
       if (this.startRecord) {
@@ -208,6 +229,7 @@ export default {
   watch: {
     data (val) {
       this.reflectName = val.map((d, i) => ('stack_' + i))
+      this.activeStack = this.reflectName[0]
     }
   }
 }
@@ -230,23 +252,21 @@ export default {
       animation: record 2s infinite;
     }
   }
-  .data-preview{
-    margin-bottom: 12px;
-    &:hover .stack-actions{
-      height: 30px;
-    }
-    .stack-actions{
+     .stack-actions{
       transition: height .5s;
-      height: 0;
       overflow: hidden;
-      margin-top: 6px;
-    }
-    .action-btn{
-      margin-right: 10px;
-      &.action-btn__input{
-        width: 80px;
+      .action-btn{
+        margin-right: 10px;
+        margin-bottom: 10px;
+        &.action-btn__input{
+          width: 80px;
+        }
       }
     }
+
+  .data-preview{
+    margin-bottom: 12px;
+
     .preview-item{
       display: inline-block;
       width: 20px;
