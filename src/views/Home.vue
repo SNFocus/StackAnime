@@ -2,6 +2,62 @@
   <a-row style="height: 100%;overflow: auto;overflow-x: hidden;">
     <a-col :xs="24" :sm="14" :md="15" :lg="16" :xl="17" style="height: 100%;">
       <div id="animation-box" :style="{background: styleConfig.containerBg}" ref="box">
+        <div class="label-actions">
+            <a-tooltip title="创建文本标签">
+              <a-icon class="action" type="tags" style="font-size: 18px;" @click.native="createLabel" v-show="!editLabel"/>
+            </a-tooltip>
+
+            <span v-show="editLabel">
+               <a-tooltip title="内容">
+                <a-input style="width: 88px;" v-if="editLabel" v-model="editLabel['content']" class="action" size="small" />
+              </a-tooltip>
+
+              <a-tooltip title="字体大小">
+                <a-input style="width: 68px;" v-if="editLabel" v-model="editLabel['font-size']" class="action" size="small" />
+              </a-tooltip>
+
+              <a-tooltip title="最大宽度">
+                <a-input style="width: 68px;" v-if="editLabel" v-model="editLabel['max-width']" class="action" size="small"  />
+              </a-tooltip>
+
+              <a-tooltip title="Padding">
+                <a-input style="width: 68px;" v-if="editLabel" v-model="editLabel['padding']" class="action" size="small"  />
+              </a-tooltip>
+
+              <a-tooltip title="字体颜色">
+                <a-icon class="action icon" type="font-colors" @click.native="setEditLabelkey('color')"/>
+              </a-tooltip>
+
+              <a-tooltip title="背景色">
+                <a-icon class="action icon" type="bg-colors" @click.native="setEditLabelkey('background')"/>
+              </a-tooltip>
+
+              <a-tooltip title="隐藏">
+                <a-icon class="action icon" type="close-circle" @click.native="editLabel = null"/>
+              </a-tooltip>
+              <color-picker
+                v-model="color"
+                class="label-color-picker"
+                v-show="showLabelPicker"
+                @input="onLabelPickerChange"/>
+            </span>
+          </div>
+        <div
+          v-draglabel
+          v-for="label in labels"
+          :key="label.id"
+          class="label drag-label"
+          :style="label"
+          :class="{editing: editLabel && editLabel.id === label.id}">
+          <span>{{label.content}}</span>
+          <a-icon
+          style="padding: 0 6px 4px;"
+          type="setting"
+          class="setting"
+          title="设置"
+           @mousedown.stop=""
+          @click.stop="editLabel = label" />
+        </div>
         <template v-if="animeLoader">
           <div
             v-for="item in animeLoader.animations"
@@ -120,6 +176,7 @@
 import { AnimeLoader, Stack } from './Stack.js'
 import { Chrome } from 'vue-color'
 import { debounce, throttle } from '@/assets/utils.js'
+import DragDirective from '@/directives/drag.js'
 import ActionPane from '@/components/ActionPane.vue'
 export default {
   components: {
@@ -128,6 +185,9 @@ export default {
   },
   data () {
     return {
+      labels: [],
+      editLabel: null,
+      editLabelKey: null,
       data: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
       showConfigPane: false,
       stackList: [],
@@ -140,8 +200,9 @@ export default {
         top: '66%',
         left: '100%'
       },
+      showLabelPicker: false,
       config: {
-        duration: 500,
+        duration: 1000,
         childGap: 16, // 元素之间的间隔
         stackGap: 50, // 栈之间的间隔
         childWidth: 50, // 元素宽度
@@ -150,7 +211,7 @@ export default {
         toLeft: 200, // 横向时， 到容器左边的距离
         toBottom: 300 // 竖向时， 到容器底边的距离
       },
-      maintainActiveState: 'restore',
+      maintainActiveState: 'maintain',
       styleOption: {
         containerBg: '画布背景',
         activeChildBg: '活动背景',
@@ -174,6 +235,8 @@ export default {
     window.reload = this.reloadStack
   },
 
+  directives: { draglabel: DragDirective },
+
   mounted () {
     document.body.addEventListener('click', (ev) => {
       const picker = document.querySelector('.color-picker')
@@ -192,13 +255,16 @@ export default {
       stack1.addAction('unshift', 13)
       stack1.addAction('pop')
       stack1.addAction('merge', 2, 23)
-      // stack1.addAction('push', 12)
+      stack1.addAction('push', 12)
       stack1.addAction('exchange', stack2)
     }
     window.cb = cb
   },
   methods: {
 
+    getLabelStyle (label) {
+      return label.filter(t => !['id', 'content'].includes)
+    },
     getStackProp (index, box, num) {
       const { childWidth, childHeight, stackGap, isLandscape, childGap, toLeft, toBottom } = this.config
       const getStartPos = (p, c) => ((p - num * c - (num - 1) * stackGap) / 2)
@@ -260,11 +326,22 @@ export default {
 
     setColor (ev, key) {
       setTimeout(() => {
-        const { pageX, pageY } = ev
-        this.pickerStyle.top = (pageY - 10) + 'px'
-        this.pickerStyle.left = (pageX + 10) + 'px'
+        this.showPicker(ev)
         this.editingColor = key
       }, 0)
+    },
+
+    showPicker (ev) {
+      const { pageX, pageY } = ev
+      this.pickerStyle.top = (pageY - 10) + 'px'
+      this.pickerStyle.left = (pageX + 10) + 'px'
+    },
+
+    setEditLabelkey (key) {
+      if (this.editLabel) {
+        this.editLabelKey = key
+        this.showLabelPicker = true
+      }
     },
 
     onColorChange (color) {
@@ -274,6 +351,17 @@ export default {
         }, 800)
       }
       this.updateStyle(color)
+    },
+
+    onLabelPickerChange (color) {
+      if (!this.updateLabelStyle) {
+        this.updateLabelStyle = throttle(function (color) {
+          const target = this.labels.find(t => t.id === this.editLabel.id)
+          this.$set(target, this.editLabelKey, color.hex)
+          this.$forceUpdate()
+        }, 800)
+      }
+      this.updateLabelStyle(color)
     },
 
     onDurationChange () {
@@ -287,6 +375,18 @@ export default {
     setData (data) {
       this.data = data
       this.initStack()
+    },
+
+    createLabel () {
+      this.labels.push({
+        id: new Date().getTime(),
+        background: 'transparent',
+        padding: '8px 10x',
+        color: '#333333',
+        'font-size': '14px',
+        'max-width': 'auto',
+        content: '这里是Label内容'
+      })
     }
   },
   watch: {
@@ -308,6 +408,16 @@ export default {
   min-height: 300px;
   position: relative;
   transition: background 1s;
+  .drag-label{
+    position: absolute;
+    transition: left .1s , top .1s;
+    padding: 6px 12px;
+    &.dragging{
+      user-select: none;
+      border: 1px solid #f5f5f5;
+      background: #FFF;
+    }
+  }
 
   .anime-item{
     position: absolute;
@@ -387,19 +497,21 @@ export default {
   }
 }
 
+.color-picker{
+  position: fixed;
+  opacity: .4;
+  transition: top .5s, left .5s, opacity .5s;
+  &:hover {
+    opacity: 1  ;
+  }
+}
+
 .config-pane {
   ::v-deep .ant-input-number{
     width: 100%;
     max-width: 200px;
   }
-  .color-picker{
-    position: fixed;
-    opacity: .4;
-    transition: top .5s, left .5s, opacity .5s;
-    &:hover {
-      opacity: 1  ;
-    }
-  }
+
   .color-setting {
     margin-bottom: 20px;
     .preview{
@@ -413,6 +525,48 @@ export default {
   }
 }
 
+.label-color-picker {
+  position: absolute;
+  top: 40px;
+  z-index: 999;
+}
+.drag-label.label {
+  &:hover > .setting {
+    color: white;
+    display: block;
+  }
+  &.editing{
+    border: 1px dashed white;
+  }
+  .setting {
+    position: absolute;
+    right: -1.5rem;
+    top: 0;
+    display: none;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  font-size: 16px;
+  left: 20px;
+  top: 20px;
+}
+
+.label-actions{
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 8px 10px;
+   .action{
+    margin-right: 6px;
+    cursor: pointer;
+    &.icon{
+      font-size: 18px;
+    }
+    &:hover{
+      color: #d6d6d6;
+    }
+  }
+}
 @keyframes hide {
   0%{
     left: -26px;

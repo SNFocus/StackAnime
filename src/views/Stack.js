@@ -1,5 +1,5 @@
 export class AnimeLoader {
-  static duration = 500
+  static duration = 1000
   constructor () {
     this.animations = []
     this.animeTask = []
@@ -174,6 +174,7 @@ export class Stack {
     }
     const actionFunc = this[action].bind(this, ...arg)
     actionTask.push(actionFunc)
+
     if (actionTask.length === 1) {
       this.loopAction()
     }
@@ -181,18 +182,16 @@ export class Stack {
 
   loopAction () {
     if (actionTask[0]) {
+      Stack.maintainState && Stack.animeLoader.clearAnimeFlag(true)
       actionTask[0]()
-      Stack.maintainState
-        ? Stack.animeLoader.clearAnimeFlag(true)
-        : Stack.animeLoader.addTask('clearAnimeFlag')
     }
   }
 
   afterAction (cb) {
     return () => {
-      console.log('after action')
       cb && cb()
       actionTask.shift()
+      !Stack.maintainState && Stack.animeLoader.clearAnimeFlag(true)
       this.loopAction()
     }
   }
@@ -290,12 +289,10 @@ export class Stack {
 
   unshift (val) {
     const func = () => {
-      console.log('start')
       const item = this.createItem(val, -1)
       const offset = this.isLandscape ? `${this.cw} 0` : `0 -${this.ch}`
       const cb = () => this.children.unshift(item)
       Stack.animeLoader.addTask('startAnime', item._id, `0 0, ${offset}`, cb, 200)
-
       const lastCB = this.afterAction()
       this.moveStack({ lastCB })
     }
@@ -319,7 +316,7 @@ export class Stack {
 
   // [单一方法]
   // 合并元素
-  mergeItem (len) {
+  mergeItem (len, gap = 100) {
     const ids = []
     const fromLen = this.length()
     const delData = id => {
@@ -330,9 +327,10 @@ export class Stack {
     for (let i = 0; i < len; i++) {
       const id = this.getItemByIdx(fromLen - i - 1)._id
       ids.push(id)
-      const cb = i === len - 1 ? this.afterAction(afterFunc) : undefined
+      const isLast = i === len - 1
+      const cb = isLast ? this.afterAction(afterFunc) : undefined
       const offset = this.isLandscape ? `${this.cw * i} 0` : `0 -${this.ch * i}`
-      Stack.animeLoader.addTask('startAnime', id, `0 0, ${offset}`, cb)
+      Stack.animeLoader.addTask('startAnime', id, `0 0, ${offset}`, cb, isLast ? undefined : gap)
     }
   }
 
