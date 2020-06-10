@@ -25,18 +25,18 @@
               </a-tooltip>
 
               <a-tooltip title="字体颜色">
-                <a-icon class="action icon" type="font-colors" @click.native="setEditLabelkey('color')"/>
+                <a-icon class="action icon" type="font-colors" @click.stop.native="setEditLabelkey('color')"/>
               </a-tooltip>
 
               <a-tooltip title="背景色">
-                <a-icon class="action icon" type="bg-colors" @click.native="setEditLabelkey('background')"/>
+                <a-icon class="action icon" type="bg-colors" @click.stop.native="setEditLabelkey('background')"/>
               </a-tooltip>
 
               <a-tooltip title="隐藏">
                 <a-icon class="action icon" type="close-circle" @click.native="editLabel = null"/>
               </a-tooltip>
               <color-picker
-                v-model="color"
+                v-model="labelColor"
                 class="label-color-picker"
                 v-show="showLabelPicker"
                 @input="onLabelPickerChange"/>
@@ -194,6 +194,7 @@ export default {
       animeLoader: null,
       actions: [],
       orientation: 'landscape',
+      labelColor: '#FFF',
       color: '#FFF',
       editingColor: null,
       pickerStyle: {
@@ -246,19 +247,13 @@ export default {
       this.pickerStyle.top = '66%'
       this.pickerStyle.left = '100%'
     })
+    document.body.addEventListener('click', (ev) => {
+      const picker = document.querySelector('.label-color-picker')
+      if (!picker) return
+      if (picker === ev.target || picker.contains(ev.target)) return
+      this.showLabelPicker = false
+    })
     this.load('init')
-    const cb = () => {
-      const stack1 = this.stackList[0]
-      const stack2 = this.stackList[2]
-      stack1.addAction('pop')
-      stack1.addAction('unshift', 13)
-      stack1.addAction('unshift', 13)
-      stack1.addAction('pop')
-      stack1.addAction('merge', 2, 23)
-      stack1.addAction('push', 12)
-      stack1.addAction('exchange', stack2)
-    }
-    window.cb = cb
   },
   methods: {
 
@@ -341,6 +336,7 @@ export default {
       if (this.editLabel) {
         this.editLabelKey = key
         this.showLabelPicker = true
+        this.labelColor = this.editLabel[this.editLabelKey]
       }
     },
 
@@ -440,6 +436,7 @@ export default {
     width: 100%;
     height: 100%;
     position: relative;
+    background: #FFF;
 
   .label{
     position: absolute;
@@ -529,6 +526,7 @@ export default {
   position: absolute;
   top: 40px;
   z-index: 999;
+  right: 14px;
 }
 .drag-label.label {
   &:hover > .setting {
